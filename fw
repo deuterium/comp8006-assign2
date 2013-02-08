@@ -19,7 +19,6 @@ icmpPorts=
 
 #disable network manager
 systemctl networkmanager.Service disable
-
 #enable forwarding
 echo 1 > /proc/sys/net/ipv4/ip_forward
 
@@ -32,5 +31,18 @@ iptables -X
 iptables -P INPUT DROP
 iptables -P FORWARD DROP
 iptables -P OUTPUT DROP
+
+#Accepting forwarding between interface devices
+iptables -A FORWARD -i $extDev -o $intDev -j ACCEPT
+iptables -A FORWARD -i $intDev -o $extDev -j ACCEPT
+
+#Accept user configured ports 
+iptables -t nat -A PREROUTING -p tcp -i $extDev -m multiport --dport $tcpPorts[*] -j DNAT --to $intDev
+iptables -t nat -A PREROUTING -p udp -i $extDev -m multiport --dport $udpPorts[*] -j DNAT --to $intDev
+iptables -t nat -A PREROUTING -p icmp -i $extDev -m multiport --dport $icmpPorts[*] -j DNAT --to $intDev
+
+iptables -t nat -A POSTROUTING -o $extDev -j MASQUERADE
+
+
 
 iptables -L
