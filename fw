@@ -39,9 +39,9 @@ iptables -A FORWARD -i $intDev -o $extDev -j ACCEPT
 #Accept user configured ports 
 iptables -t nat -A PREROUTING -p tcp -i $extDev -m multiport --dport $tcpPorts[*] -j DNAT --to $intAddr
 iptables -t nat -A PREROUTING -p udp -i $extDev -m multiport --dport $udpPorts[*] -j DNAT --to $intAddr
-for (( i=0; i<${#icmpPorts[*]}; i++ ))
+for i in ${!icmpPorts[*]}
 do
-iptables -t nat -A PREROUTING -p icmp -i $extDev --icmp-type ${icmpPorts[c]} -j DNAT --to $intAddr
+	iptables -t nat -A PREROUTING -p icmp -i $extDev --icmp-type ${icmpPorts[$i]} -j DNAT --to $intAddr
 done
 
 iptables -t nat -A POSTROUTING -o $extDev -j MASQUERADE
@@ -80,10 +80,10 @@ iptables -A INPUT  -i $extDev -p tcp -m multiport --dport $tcpPorts[*] -m state 
 iptables -A OUTPUT -o $extDev -p tcp -m multiport --sport $tcpPorts[*] -m state --state ESTABLISHED -j ACCEPT
 
 #Accept ICMP types that are set
-for (( i=0; i<${#icmpPorts[*]}; i++))
+for i in ${!icmpPorts[*]}
 do
-	iptables -A INPUT  -i $extDev -p icmp --icmp-type ${icmpPorts[i]} -j ACCEPT
-	iptables -A OUTPUT -o $extDev -p icmp --icmp-type ${icmpPorts[i]} -j ACCEPT
+	iptables -A INPUT  -i $extDev -p icmp --icmp-type ${icmpPorts[$i]} -j ACCEPT
+	iptables -A OUTPUT -o $extDev -p icmp --icmp-type ${icmpPorts[$i]} -j ACCEPT
 done
 
 #Block all external traffic to ports 32768-32775, 137-139, tcp 111 and 515
