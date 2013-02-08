@@ -1,8 +1,27 @@
-#user config
+#User Config
 
-
+#Enter the IP address of the internal address to be used
+intAddr=
+#Enter the name of the network device to be used internally
+intDev=
+#Enter the IP address of the external address that is being used
+extAddr=
+#Enter the name of the network device to be used externally
+extDev=
+#List TCP ports to allow, comma seperated
+tcpPorts=
+#List UDP ports to allow, comma seperated
+udpPorts=
+#List ICP ports to allow, comma seperated
+icmpPorts=
 
 #implementation_DO_NOT_TOUCH_BELOW
+
+#disable network manager
+systemctl networkmanager.Service disable
+
+#enable forwarding
+echo 1 > /proc/sys/net/ipv4/ip_forward
 
 #clear previous rules and chains
 iptables -F
