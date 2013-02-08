@@ -1,24 +1,24 @@
 #User Config
 
 #Enter the IP address of the internal address to be used
-intAddr=
+intAddr=192.168.3.1
 #Enter the name of the network device to be used internally
-intDev=
+intDev=p3p1
 #Enter the IP address of the external address that is being used
-extAddr=
+extAddr=192.168.0.NUMBER
 #Enter the name of the network device to be used externally
-extDev=
+extDev=em1
 #List TCP ports to allow, comma seperated
-tcpPorts=
+tcpPorts=21,22,23,80,443
 #List UDP ports to allow, comma seperated
-udpPorts=
-#List ICP ports to allow, comma seperated
-icmpPorts=
+udpPorts=67,68
+#List ICP types to allow, comma seperated. see http://www.nthelp.com/icmp.html
+icmpPorts=0,8
 
 #implementation_DO_NOT_TOUCH_BELOW
 
 #disable network manager
-systemctl networkmanager.Service disable
+#systemctl networkmanager.Service disable
 #enable forwarding
 echo 1 > /proc/sys/net/ipv4/ip_forward
 
@@ -39,7 +39,7 @@ iptables -A FORWARD -i $intDev -o $extDev -j ACCEPT
 #Accept user configured ports 
 iptables -t nat -A PREROUTING -p tcp -i $extDev -m multiport --dport $tcpPorts[*] -j DNAT --to $intDev
 iptables -t nat -A PREROUTING -p udp -i $extDev -m multiport --dport $udpPorts[*] -j DNAT --to $intDev
-iptables -t nat -A PREROUTING -p icmp -i $extDev -m multiport --dport $icmpPorts[*] -j DNAT --to $intDev
+##FIXMEiptables -t nat -A PREROUTING -p icmp -i $extDev -m multiport --dport $icmpPorts[*] -j DNAT --to $intDev
 
 iptables -t nat -A POSTROUTING -o $extDev -j MASQUERADE
 
@@ -91,4 +91,4 @@ iptables -t mangle -A PREROUTING -m multiport -p tcp --sport 22,ftp,ftp-data -j 
 iptables -t mangle -A PREROUTING -m multiport -p tcp --dport 22,ftp,ftp-data -j TOS --set-tos Maximize-Throughput
 iptables -t mangle -A PREROUTING -m multiport -p tcp --sport 22,ftp,ftp-data -j TOS --set-tos Maximize-Throughput
 
-iptables -L
+#iptables -L
