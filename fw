@@ -43,6 +43,52 @@ iptables -t nat -A PREROUTING -p icmp -i $extDev -m multiport --dport $icmpPorts
 
 iptables -t nat -A POSTROUTING -o $extDev -j MASQUERADE
 
+#Accept DNS packets
+iptables -A INPUT  -i $extDev-p udp --sport 53 -j ACCEPT
+iptables -A OUTPUT -o $extDev -p udp --dport 53 -j ACCEPT
 
+#Accept DHCP packets to port 67:68 for DHCP
+iptables -A INPUT  -i $extDev -p udp --dport 67:68 --sport 67:68 -j ACCEPT
+iptables -A OUTPUT -o $extDev -p udp --dport 67:68 --sport 67:68 -j ACCEPT
+
+
+#Drop packets destined for firewall host from outside
+iptables -A INPUT -i $extDev -d $extAddr -p tcp --syn -j DROP
+
+#Drop all packets with internal source address from outside matching internal network
+iptables -A INPUT -s $intAddr -i $extDev -j DROP
+
+#Drop all inbound SYN on high ports
+iptables -A INPUT -i $extDev -p tcp --syn --dport 1024:65535 -j DROP
+
+#Accept fragments
+iptables -A INPUT -f -i $extDev -j ACCEPT
+
+#Drop packets with SYN and FIN bits set
+iptables -A INPUT -i $extDev -p tcp --tcp-flags SYN,FIN SYN,FIN -j DROP
+iptables -A OUTPUT -o $extDev -p tcp --tcp-flags SYN,FIN SYN,FIN -j DROP
+
+#Drop all telnet packets 
+iptables -A INPUT -i $extDev -p tcp --dport 23 -j DROP
+iptables -A OUTPUT -o $extDev -p tcp --sport 23 -j DROP
+
+#Accept all TCP packets that belong to existing allowed ports
+iptables -A INPUT  -i $extDev -p tcp -m multiport --dport $tcpPorts[*] -m state --state NEW,ESTABLISHED -j ACCEPT
+iptables -A OUTPUT -o $extDev -p tcp -m multiport --sport $tcpPorts[*] -m state --state ESTABLISHED -j ACCEPT
+
+#Block all external traffic to ports 32768-32775, 137-139, tcp 111 and 515
+iptables -A INPUT -i $extDev -p tcp --dport 32768:32775 -j DROP
+iptables -A INPUT -i $extDev -p udp --dport 32768:32775 -j DROP
+
+iptables -A INPUT -i $extDev -p tcp --dport 137:139 -j DROP
+iptables -A INPUT -i $extDev -p udp --dport 137:139 -j DROP
+
+iptables -A INPUT -i $extDev -p tcp --dport 111,515 -j DROP
+
+#For FTP and SSH, set Min Delay and Max Throughput (use mangle)
+iptables -t mangle -A PREROUTING -m multiport -p tcp --dport 22,ftp,ftp-data -j TOS --set-tos Minimize-Delay
+iptables -t mangle -A PREROUTING -m multiport -p tcp --sport 22,ftp,ftp-data -j TOS --set-tos Minimize-Delay
+iptables -t mangle -A PREROUTING -m multiport -p tcp --dport 22,ftp,ftp-data -j TOS --set-tos Maximize-Throughput
+iptables -t mangle -A PREROUTING -m multiport -p tcp --sport 22,ftp,ftp-data -j TOS --set-tos Maximize-Throughput
 
 iptables -L
