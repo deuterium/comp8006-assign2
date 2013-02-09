@@ -1,0 +1,6 @@
+systemctl stop NetworkManager.service
+ifdown em1
+ifdown p3p1
+ifconfig p3p1 192.168.3.1
+route add gw 192.168.3.fw 
+ifup p3p1
