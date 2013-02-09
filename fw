@@ -1,11 +1,11 @@
 #User Config
 
-#Enter the IP address of the internal address to be used
+#Enter the IP address of the internal address space to be used
 intAddr=192.168.3.1
 #Enter the name of the network device to be used internally
 intDev=p3p1
 #Enter the IP address of the external address that is being used
-extAddr=192.168.0.NUMBER
+extAddr=192.168.0.6
 #Enter the name of the network device to be used externally
 extDev=em1
 #List TCP ports to allow, comma seperated
@@ -36,18 +36,25 @@ iptables -P OUTPUT DROP
 iptables -A FORWARD -i $extDev -o $intDev -j ACCEPT
 iptables -A FORWARD -i $intDev -o $extDev -j ACCEPT
 
+#Splits icmp ports in to array
+OIFS=$IFS
+IFS=","
+icmpTypes=($icmpPorts)
+IFS=$OIFS
+
+
 #Accept user configured ports 
-iptables -t nat -A PREROUTING -p tcp -i $extDev -m multiport --dport $tcpPorts[*] -j DNAT --to $intAddr
-iptables -t nat -A PREROUTING -p udp -i $extDev -m multiport --dport $udpPorts[*] -j DNAT --to $intAddr
-for i in ${!icmpPorts[*]}
+iptables -t nat -A PREROUTING -p tcp -i $extDev -m multiport --dport ${tcpPorts[*]} -j DNAT --to $intAddr
+iptables -t nat -A PREROUTING -p udp -i $extDev -m multiport --dport ${udpPorts[*]} -j DNAT --to $intAddr
+for (( i=0;i<${#icmpTypes[*]}; i++ ))
 do
-	iptables -t nat -A PREROUTING -p icmp -i $extDev --icmp-type ${icmpPorts[$i]} -j DNAT --to $intAddr
+	iptables -t nat -A PREROUTING -p icmp -i $extDev --icmp-type ${icmpTypes[$i]} -j DNAT --to $intAddr
 done
 
 iptables -t nat -A POSTROUTING -o $extDev -j MASQUERADE
 
 #Accept DNS packets
-iptables -A INPUT  -i $extDev-p udp --sport 53 -j ACCEPT
+iptables -A INPUT  -i $extDev -p udp --sport 53 -j ACCEPT
 iptables -A OUTPUT -o $extDev -p udp --dport 53 -j ACCEPT
 
 #Accept DHCP packets to port 67:68 for DHCP
@@ -76,14 +83,14 @@ iptables -A INPUT -i $extDev -p tcp --dport 23 -j DROP
 iptables -A OUTPUT -o $extDev -p tcp --sport 23 -j DROP
 
 #Accept all TCP packets that belong to existing allowed ports
-iptables -A INPUT  -i $extDev -p tcp -m multiport --dport $tcpPorts[*] -m state --state NEW,ESTABLISHED -j ACCEPT
-iptables -A OUTPUT -o $extDev -p tcp -m multiport --sport $tcpPorts[*] -m state --state ESTABLISHED -j ACCEPT
+iptables -A INPUT  -i $extDev -p tcp -m multiport --dport ${tcpPorts[*]} -m state --state NEW,ESTABLISHED -j ACCEPT
+iptables -A OUTPUT -o $extDev -p tcp -m multiport --sport ${tcpPorts[*]} -m state --state ESTABLISHED -j ACCEPT
 
 #Accept ICMP types that are set
-for i in ${!icmpPorts[*]}
+for (( i=0;i<${#icmpTypes[*]}; i++ ))
 do
-	iptables -A INPUT  -i $extDev -p icmp --icmp-type ${icmpPorts[$i]} -j ACCEPT
-	iptables -A OUTPUT -o $extDev -p icmp --icmp-type ${icmpPorts[$i]} -j ACCEPT
+	iptables -A INPUT  -i $extDev -p icmp --icmp-type ${icmpTypes[$i]} -j ACCEPT
+	iptables -A OUTPUT -o $extDev -p icmp --icmp-type ${icmpTypes[$i]} -j ACCEPT
 done
 
 #Block all external traffic to ports 32768-32775, 137-139, tcp 111 and 515
@@ -93,7 +100,7 @@ iptables -A INPUT -i $extDev -p udp --dport 32768:32775 -j DROP
 iptables -A INPUT -i $extDev -p tcp --dport 137:139 -j DROP
 iptables -A INPUT -i $extDev -p udp --dport 137:139 -j DROP
 
-iptables -A INPUT -i $extDev -p tcp --dport 111,515 -j DROP
+iptables -A INPUT -i $extDev -m multiport -p tcp --dport 111,515 -j DROP
 
 #For FTP and SSH, set Min Delay and Max Throughput (use mangle)
 iptables -t mangle -A PREROUTING -m multiport -p tcp --dport 22,ftp,ftp-data -j TOS --set-tos Minimize-Delay
